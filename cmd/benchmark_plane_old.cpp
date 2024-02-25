@@ -32,10 +32,8 @@ int main() {
     alpha = i;
 
     printf("alpha = %lf, beta = %lf\n", alpha, beta);
-  
 
-    GuessPlane plane;
-    plane.benchmark(alpha, beta);
+    GuessPlane::benchmark(alpha, beta);
   }
 
   return 0;

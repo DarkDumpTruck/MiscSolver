@@ -16,8 +16,7 @@ int main() {
 
   double alpha = 8.0;
 
-  GuessPlane plane;
-  plane.benchmark(alpha);
+  GuessPlane::benchmark(alpha);
 
   return 0;
 }
