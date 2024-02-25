@@ -1,5 +1,6 @@
 #include "games/GuessPlane/main.h"
 #include "games/MeetInMiddle/main.h"
+#include "games/OneTwoPoker/main.h"
 
 int main() {
   printf("Choose game to start:\n\t1. GuessPlane\n\t2. MeetInMiddle\n");
@@ -7,7 +8,9 @@ int main() {
   scanf("%d", &x);
   if (x == 1) {
     GuessPlane::startConsole();
-  } else if(x==2) {
+  } else if (x == 2) {
     MeetInMiddle::startConsole();
+  } else if (x == 3) {
+    OneTwoPoker::startConsole();
   }
 }
