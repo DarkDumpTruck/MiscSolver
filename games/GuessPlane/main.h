@@ -177,6 +177,7 @@ double cases(int pos, int depth, vector<int> &result, board &selected,
     }
   }
   double head_rate = (double)head_cnt / bodys_list.size();
+  result.push_back(head_cnt);
   result.push_back(body_cnt);
   if (depth <= 0) {
     result.push_back(empty_cnt);
@@ -296,10 +297,11 @@ pair<action, pair<double, double>> calculate_simple(const board &info_head,
 double expected_times(const board &current_info_head,
                       const board &current_info_body,
                       const board &current_info_empty, const board &target_bd,
-                      const board &target_hd, int depth, double alpha) {
-  auto [a, _] = calculate_simple(current_info_head, current_info_body,
-                                 current_info_empty, depth, alpha);
+                      const board &target_hd, int depth, double alpha = 1.0, double __fast_path = false) {
+  auto a = __fast_path ? 45 : calculate_simple(current_info_head, current_info_body,
+                                 current_info_empty, depth, alpha).first;
   // printf("Action: %c%d\n", a % N + 'A', a / N);
+  // printf("Action: %d\n", a);
   double result = 0;
   if (target_hd.test(a)) {
     if (current_info_head.count() == PLANE - 1) {
@@ -333,8 +335,10 @@ double expected_times(const board &current_info_head,
   return result;
 }
 
-void benchmark(int alpha) {
+void benchmark(double alpha) {
   init_masks();
+
+  printf("Alpha = %lf\n", alpha);
 
   // Case 1: 2 random given body and 3 random given empty
   board info_head = {}, info_body = {}, info_empty = {};
@@ -347,33 +351,25 @@ void benchmark(int alpha) {
   info_empty.set(96);
   info_body.set(33);
   info_body.set(56);
-  /*
-  for (int i = 0; i < 3; i++) {
-      info_empty.set(rand() % (N * N));
-  }
-  for (int i = 0; i < 1; i++) {
-      info_body.set(rand() % (N * N));
-  }
-      */
 
   vector<shared_ptr<board>> bodys_list, heads_list;
   dfs(0, 0, {}, {}, bodys_list, heads_list, info_head, info_body, info_empty);
-
-  print_board(info_body, info_head, info_empty);
+  // print_board(info_body, info_head, info_empty);
 
   int count = bodys_list.size();
-  printf("Total cases: %d\n", count);
   atomic<double> total_exp(0);
 
+  printf("Total cases: %d\n", count);
+
   vector<thread> threads;
-  int THREAD_CNT = 4;
+  int THREAD_CNT = 16;
   for (int t = 0; t < THREAD_CNT; t++) {
     threads.emplace_back([&, t]() {
       for (int i = 0; i < count; i++) {
         if (i % THREAD_CNT == t) {
           // print_board(*bodys_list[i], *heads_list[i]);
           double exp = expected_times(info_head, info_body, info_empty,
-                                      *bodys_list[i], *heads_list[i], 2, alpha);
+                                      *bodys_list[i], *heads_list[i], 2, alpha, false);
           total_exp = total_exp + exp;
           // printf("Expect turns = %lf\n", exp);
         }
@@ -395,7 +391,9 @@ int startConsole() {
   info_emptys[0].set(N - 1);
   info_emptys[0].set(N * N - N);
   info_emptys[0].set(N * N - 1);
-  double alpha = 3.0;
+
+  double alpha = 4.0;
+
   while (true) {
     board info_head = info_heads.back();
     board info_body = info_bodys.back();
