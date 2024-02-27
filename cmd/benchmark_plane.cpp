@@ -16,11 +16,17 @@ With head reault:
   alpha = 4.0,     avg = 3.694395
   alpha = 8.0,     avg = 3.735320
   alpha = 12.0,    avg = 3.756228
+  
+Case 2: 3 random given empty
+With head result:
+
 */
 int main() {
   srand(time(0));
 
-  for(double alpha = 1.0; alpha <= 5.0; alpha += 0.5) {
+  // GuessPlane::benchmark2();
+
+  for(double alpha = 2.0; alpha <= 6.0; alpha += 0.1) {
     GuessPlane::benchmark(alpha);
   }
 

@@ -297,8 +297,8 @@ pair<action, pair<double, double>> calculate_simple(const board &info_head,
 double expected_times(const board &current_info_head,
                       const board &current_info_body,
                       const board &current_info_empty, const board &target_bd,
-                      const board &target_hd, int depth, double alpha = 1.0, double __fast_path = false) {
-  auto a = __fast_path ? 45 : calculate_simple(current_info_head, current_info_body,
+                      const board &target_hd, int depth, double alpha = 1.0, int __fast_path = 0) {
+  auto a = __fast_path ? __fast_path : calculate_simple(current_info_head, current_info_body,
                                  current_info_empty, depth, alpha).first;
   // printf("Action: %c%d\n", a % N + 'A', a / N);
   // printf("Action: %d\n", a);
@@ -340,17 +340,15 @@ void benchmark(double alpha) {
 
   printf("Alpha = %lf\n", alpha);
 
-  // Case 1: 2 random given body and 3 random given empty
+  // Case 2: 3 random given empty
   board info_head = {}, info_body = {}, info_empty = {};
   info_empty.set(0);
   info_empty.set(N - 1);
   info_empty.set(N * N - N);
   info_empty.set(N * N - 1);
-  info_empty.set(77);
-  info_empty.set(82);
-  info_empty.set(96);
-  info_body.set(33);
-  info_body.set(56);
+  info_empty.set(37);
+  info_empty.set(53);
+  info_empty.set(80);
 
   vector<shared_ptr<board>> bodys_list, heads_list;
   dfs(0, 0, {}, {}, bodys_list, heads_list, info_head, info_body, info_empty);
@@ -361,6 +359,8 @@ void benchmark(double alpha) {
 
   printf("Total cases: %d\n", count);
 
+  auto first_step = calculate_simple(info_head, info_body, info_empty, 2, alpha).first;
+
   vector<thread> threads;
   int THREAD_CNT = 16;
   for (int t = 0; t < THREAD_CNT; t++) {
@@ -369,7 +369,7 @@ void benchmark(double alpha) {
         if (i % THREAD_CNT == t) {
           // print_board(*bodys_list[i], *heads_list[i]);
           double exp = expected_times(info_head, info_body, info_empty,
-                                      *bodys_list[i], *heads_list[i], 2, alpha, false);
+                                      *bodys_list[i], *heads_list[i], 2, alpha, first_step);
           total_exp = total_exp + exp;
           // printf("Expect turns = %lf\n", exp);
         }
@@ -383,6 +383,25 @@ void benchmark(double alpha) {
   printf("Total expect turns = %lf\n", total_exp.load() / count);
 }
 
+void benchmark2() {
+  init_masks();
+
+  board info_head = {}, info_body = {}, info_empty = {};
+  info_empty.set(0);
+  info_empty.set(N - 1);
+  info_empty.set(N * N - N);
+  info_empty.set(N * N - 1);
+  info_empty.set(77);
+  info_empty.set(82);
+  info_body.set(56);
+
+  auto start = chrono::high_resolution_clock::now();
+  auto action = calculate_simple(info_head, info_body, info_empty, 2, 4.0).first;
+  auto end = chrono::high_resolution_clock::now();
+  cout << "Action: " << action << endl;
+  cout << "Time: " << chrono::duration_cast<chrono::milliseconds>(end - start).count() << "ms" << endl;
+}
+
 int startConsole() {
   init_masks();
 
@@ -392,7 +411,7 @@ int startConsole() {
   info_emptys[0].set(N * N - N);
   info_emptys[0].set(N * N - 1);
 
-  double alpha = 4.0;
+  double alpha = 3.0;
 
   while (true) {
     board info_head = info_heads.back();
