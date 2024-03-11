@@ -19,16 +19,25 @@ With head reault:
   
 Case 2: 3 random given empty
 With head result:
+  alpha = 2.0,     avg = 4.257827
+  alpha = 3.0,     avg = 4.255543
+  alpha = 4.0,     avg = 4.258932
+
+
+Benchmark 2: 3 random given empty
+shared_ptr version:
+  Action: 70
+  Time: 10126ms
 
 */
 int main() {
   srand(time(0));
 
-  // GuessPlane::benchmark2();
+  GuessPlane::benchmark2();
 
-  for(double alpha = 2.0; alpha <= 6.0; alpha += 0.1) {
-    GuessPlane::benchmark(alpha);
-  }
+  // for(double alpha = 2.0; alpha <= 6.0; alpha += 0.1) {
+  //   GuessPlane::benchmark(alpha);
+  // }
 
   return 0;
 }

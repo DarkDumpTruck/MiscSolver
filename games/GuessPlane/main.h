@@ -26,6 +26,7 @@ typedef vector<pair<double, action>> mixed_action;
 
 board masks[N * N][4] = {};
 bool valid[N * N][4] = {};
+vector<board> total_bodys, total_heads;
 
 void init_masks() {
   for (int i = 0; i < N; i++) {
@@ -130,8 +131,8 @@ double entropy(const vector<int> &p) {
 }
 
 void dfs(int x, int start, const board &bodys, const board &heads,
-         vector<shared_ptr<board>> &bodys_list,
-         vector<shared_ptr<board>> &heads_list, const board &info_head,
+         vector<board> &bodys_list,
+         vector<board> &heads_list, const board &info_head,
          const board &info_body, const board &info_empty) {
   if (x == PLANE) {
     if ((info_body & bodys) != info_body) return;
@@ -139,8 +140,8 @@ void dfs(int x, int start, const board &bodys, const board &heads,
     if ((info_body & heads).any()) return;
     if ((info_empty & bodys).any()) return;
     if ((info_empty & heads).any()) return;
-    bodys_list.emplace_back(make_shared<board>(bodys));
-    heads_list.emplace_back(make_shared<board>(heads));
+    bodys_list.push_back(bodys);
+    heads_list.push_back(heads);
   }
   for (int i = start; i < N * N;
        i++) {  // TODO: maybe give weight to each plane by its head position
@@ -158,10 +159,16 @@ void dfs(int x, int start, const board &bodys, const board &heads,
   }
 }
 
+void init_list(const board &info_head, const board &info_body, const board &info_empty) {
+  total_bodys.clear();
+  total_heads.clear();
+  dfs(0, 0, {}, {}, total_bodys, total_heads, info_head, info_body, info_empty);
+}
+
 double cases(int pos, int depth, vector<int> &result, board &selected,
-             const vector<shared_ptr<board>> &bodys_list,
-             const vector<shared_ptr<board>> &heads_list, double alpha) {
-  vector<shared_ptr<board>> empty_bodys_list, empty_heads_list;
+             const vector<board*> &bodys_list,
+             const vector<board*> &heads_list, double alpha) {
+  vector<board*> empty_bodys_list, empty_heads_list;
   int head_cnt = 0, body_cnt = 0, empty_cnt = 0;
   for (int i = 0; i < bodys_list.size(); i++) {
     if (heads_list[i]->test(pos)) {
@@ -212,8 +219,17 @@ pair<mixed_action, pair<double, double>> calculate(const board &info_head,
                                                    const board &info_empty,
                                                    int depth,
                                                    double alpha = 1.0) {
-  vector<shared_ptr<board>> bodys_list, heads_list;
-  dfs(0, 0, {}, {}, bodys_list, heads_list, info_head, info_body, info_empty);
+  vector<board*> bodys_list, heads_list;
+  for(int i = 0; i < total_bodys.size(); i++) {
+    if ((info_body & total_bodys[i]) == info_body && 
+        (info_head & total_heads[i]) == info_head &&
+        (info_body & total_heads[i]).none() &&
+        (info_empty & total_bodys[i]).none() &&
+        (info_empty & total_heads[i]).none()){
+      bodys_list.push_back(&total_bodys[i]);
+      heads_list.push_back(&total_heads[i]);
+    }
+  }
   // printf("count = %d\n", (int)bodys_list.size());
 
   board selected = info_body | info_empty | info_head;
@@ -258,9 +274,18 @@ pair<action, pair<double, double>> calculate_simple(const board &info_head,
                                                     const board &info_empty,
                                                     int depth,
                                                     double alpha = 1.0) {
-  vector<shared_ptr<board>> bodys_list, heads_list;
-  dfs(0, 0, {}, {}, bodys_list, heads_list, info_head, info_body, info_empty);
-  // printf("count = %d\n", (int)bodys_list.size());
+  vector<board*> bodys_list, heads_list;
+  for(int i = 0; i < total_bodys.size(); i++) {
+    if ((info_body & total_bodys[i]) == info_body && 
+        (info_head & total_heads[i]) == info_head &&
+        (info_body & total_heads[i]).none() &&
+        (info_empty & total_bodys[i]).none() &&
+        (info_empty & total_heads[i]).none()){
+      bodys_list.push_back(&total_bodys[i]);
+      heads_list.push_back(&total_heads[i]);
+    }
+  }
+  printf("count = %d\n", (int)bodys_list.size());
 
   board selected = info_body | info_empty | info_head;
   vector<double> p_calc(N * N), p_hit(N * N);
@@ -273,7 +298,7 @@ pair<action, pair<double, double>> calculate_simple(const board &info_head,
   double max_p = 0;
   double max_ph;
   int max_count = 0;
-  action result;
+  action result = -1;
   for (int i = 0; i < N * N; i++) {
     if (!selected.test(i)) {
       if (p_calc[i] > max_p + eps) {
@@ -350,11 +375,10 @@ void benchmark(double alpha) {
   info_empty.set(53);
   info_empty.set(80);
 
-  vector<shared_ptr<board>> bodys_list, heads_list;
-  dfs(0, 0, {}, {}, bodys_list, heads_list, info_head, info_body, info_empty);
+  init_list(info_head, info_body, info_empty);
   // print_board(info_body, info_head, info_empty);
 
-  int count = bodys_list.size();
+  int count = total_bodys.size();
   atomic<double> total_exp(0);
 
   printf("Total cases: %d\n", count);
@@ -369,7 +393,7 @@ void benchmark(double alpha) {
         if (i % THREAD_CNT == t) {
           // print_board(*bodys_list[i], *heads_list[i]);
           double exp = expected_times(info_head, info_body, info_empty,
-                                      *bodys_list[i], *heads_list[i], 2, alpha, first_step);
+                                      total_bodys[i], total_heads[i], 2, alpha, first_step);
           total_exp = total_exp + exp;
           // printf("Expect turns = %lf\n", exp);
         }
@@ -391,9 +415,12 @@ void benchmark2() {
   info_empty.set(N - 1);
   info_empty.set(N * N - N);
   info_empty.set(N * N - 1);
-  info_empty.set(77);
-  info_empty.set(82);
-  info_body.set(56);
+
+  init_list(info_head, info_body, info_empty);
+
+  info_empty.set(37);
+  info_empty.set(53);
+  info_empty.set(80);
 
   auto start = chrono::high_resolution_clock::now();
   auto action = calculate_simple(info_head, info_body, info_empty, 2, 4.0).first;
@@ -410,6 +437,8 @@ int startConsole() {
   info_emptys[0].set(N - 1);
   info_emptys[0].set(N * N - N);
   info_emptys[0].set(N * N - 1);
+
+  init_list(info_heads[0], info_bodys[0], info_emptys[0]);
 
   double alpha = 3.0;
 
